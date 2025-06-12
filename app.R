@@ -16,6 +16,7 @@ library(RColorBrewer)
 library(viridis)
 library(zipcodeR)
 library(tidycensus)
+library(leaflet.extras)
 
 # Source global utilities
 source("global.R")
@@ -25,30 +26,39 @@ ui <- fluidPage(
   theme = bslib::bs_theme(
     version = 5,
     bootswatch = "flatly",
-    primary = "#2C3E50",
-    secondary = "#34495E"
+    primary = "#0066CC",
+    secondary = "#004C99"
+  ),
+  
+  # Add custom CSS
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
+    tags$script(HTML('
+      Shiny.addCustomMessageHandler("bindCityLinks", function(_) {
+        $(".city-link").off("click").on("click", function(e) {
+          e.preventDefault();
+          var lon = $(this).data("lon");
+          var lat = $(this).data("lat");
+          Shiny.setInputValue("city_click", {lon: lon, lat: lat}, {priority: "event"});
+        });
+      });
+    '))
   ),
   
   # Header
-  headerPanel(
-    title = div(
-      style = "display: flex; justify-content: space-between; align-items: center;",
+  div(
+    class = "header",
+    style = "display: flex; align-items: center; padding: 0.25rem 1rem 0.25rem 1rem; min-height: 36px; max-height: 48px; height: 48px;",
+    div(
+      style = "display: flex; align-items: center; gap: 0.5rem;",
+      tags$img(src = "docgo-logo.png", 
+              height = "28px", 
+              style = "margin-right: 0.25rem; vertical-align: middle;",
+              alt = "DocGo Logo"),
       div(
-        style = "font-size: 24px; font-weight: bold;",
-        "US ZIP Code Density Map"
-      ),
-      div(
-        fileInput(
-          "file1",
-          "Upload CSV",
-          accept = c(
-            "text/csv",
-            "text/comma-separated-values,text/plain",
-            ".csv"
-          ),
-          buttonLabel = "Browse...",
-          placeholder = "No file selected"
-        )
+        style = "font-size: 20px; font-weight: 600; color: #0066CC; vertical-align: middle;",
+        "HPP Heat Map"
       )
     )
   ),
@@ -68,10 +78,10 @@ ui <- fluidPage(
     column(
       width = 3,
       div(
-        style = "height: calc(100vh - 120px); overflow-y: auto;",
+        style = "height: calc(100vh - 120px); overflow-y: auto; padding: 1rem;",
         # Summary statistics
         div(
-          class = "panel panel-default",
+          class = "panel",
           div(
             class = "panel-heading",
             h4("Summary Statistics")
@@ -84,7 +94,7 @@ ui <- fluidPage(
         
         # Top 10 areas
         div(
-          class = "panel panel-default",
+          class = "panel",
           div(
             class = "panel-heading",
             h4("Top 10 Areas by Density")
@@ -97,15 +107,38 @@ ui <- fluidPage(
         
         # Export options
         div(
-          class = "panel panel-default",
+          class = "panel",
           div(
             class = "panel-heading",
             h4("Export Options")
           ),
           div(
             class = "panel-body",
-            downloadButton("download_data", "Download Processed Data"),
-            downloadButton("download_map", "Export Map Image")
+            style = "display: flex; gap: 1rem;",
+            downloadButton("download_data", "Download Data", class = "btn-primary"),
+            downloadButton("download_map", "Export Map", class = "btn-primary")
+          )
+        ),
+        # File upload (moved below export options)
+        div(
+          class = "panel",
+          div(
+            class = "panel-heading",
+            h4("Upload CSV")
+          ),
+          div(
+            class = "panel-body",
+            fileInput(
+              "file1",
+              NULL,
+              accept = c(
+                "text/csv",
+                "text/comma-separated-values,text/plain",
+                ".csv"
+              ),
+              buttonLabel = "Browse...",
+              placeholder = "No file selected"
+            )
           )
         )
       )
@@ -123,9 +156,14 @@ server <- function(input, output, session) {
     city_boundaries = NULL
   )
   
-  # Initialize city boundaries
+  # Initialize city boundaries and centroids
   observe({
-    values$city_boundaries <- get_city_boundaries()
+    city_boundaries <- get_city_boundaries()
+    city_boundaries$centroid <- sf::st_centroid(city_boundaries$geometry)
+    coords <- sf::st_coordinates(city_boundaries$centroid)
+    city_boundaries$lon <- as.numeric(coords[,1])
+    city_boundaries$lat <- as.numeric(coords[,2])
+    values$city_boundaries <- city_boundaries
   })
   
   # File upload handling
@@ -213,6 +251,16 @@ server <- function(input, output, session) {
     leaflet() %>%
       addTiles() %>%
       setView(lng = -98.583, lat = 39.833, zoom = 4) %>%
+      addDrawToolbar(
+        targetGroup = 'draw',
+        rectangleOptions = drawRectangleOptions(repeatMode = FALSE),
+        polylineOptions = FALSE,
+        polygonOptions = FALSE,
+        circleOptions = FALSE,
+        markerOptions = FALSE,
+        circleMarkerOptions = FALSE,
+        editOptions = editToolbarOptions()
+      ) %>%
       addLayersControl(
         position = "bottomright",
         options = layersControlOptions(collapsed = FALSE)
@@ -266,6 +314,34 @@ server <- function(input, output, session) {
       )
   })
   
+  # Observe rectangle selection and calculate total count
+  observeEvent(input$map_draw_new_feature, {
+    feature <- input$map_draw_new_feature
+    if (!is.null(feature) && feature$geometry$type == "Polygon") {
+      coords <- feature$geometry$coordinates[[1]]
+      lngs <- sapply(coords, function(x) x[[1]])
+      lats <- sapply(coords, function(x) x[[2]])
+      bbox <- list(
+        xmin = min(lngs), xmax = max(lngs),
+        ymin = min(lats), ymax = max(lats)
+      )
+      # Get centroids for all cities
+      centroids <- values$city_boundaries %>%
+        as.data.frame() %>%
+        select(city_name = NAME, STATEFP, lon, lat)
+      # Join with map_data to get total_count
+      joined <- values$map_data %>%
+        left_join(centroids, by = c("city_name", "STATEFP"))
+      # Filter centroids within bbox
+      in_rect <- joined %>%
+        filter(!is.na(lon) & !is.na(lat) &
+               lon >= bbox$xmin & lon <= bbox$xmax &
+               lat >= bbox$ymin & lat <= bbox$ymax)
+      total <- sum(in_rect$total_count, na.rm = TRUE)
+      showNotification(paste0("Total count in selected area: ", total), type = "message", duration = 6)
+    }
+  })
+  
   # Summary statistics output
   output$summary_stats <- renderPrint({
     if (is.null(values$processed_data)) {
@@ -275,7 +351,7 @@ server <- function(input, output, session) {
       cat("-----------------\n")
       cat("Total ZIP codes:", nrow(values$processed_data), "\n")
       cat("Unique cities:", nrow(values$map_data), "\n")
-      cat("States covered:", length(unique(values$map_data$state)), "\n")
+      cat("States covered:", length(unique(values$map_data$STATEFP)), "\n")
       cat("Average ZIP codes per city:", 
           round(mean(values$map_data$zip_count), 2), "\n")
     }
@@ -283,28 +359,68 @@ server <- function(input, output, session) {
   
   # Top 10 areas table
   output$top_areas <- renderDT({
-    if (is.null(values$map_data)) {
+    if (is.null(values$map_data) || is.null(values$city_boundaries)) {
       return(NULL)
     }
     
-    top_areas <- values$map_data %>%
+    # FIPS to state abbreviation mapping
+    fips_to_abbr <- c(
+      "01" = "AL", "02" = "AK", "04" = "AZ", "05" = "AR", "06" = "CA", "08" = "CO", "09" = "CT", "10" = "DE", "12" = "FL", "13" = "GA",
+      "15" = "HI", "16" = "ID", "17" = "IL", "18" = "IN", "19" = "IA", "20" = "KS", "21" = "KY", "22" = "LA", "23" = "ME", "24" = "MD",
+      "25" = "MA", "26" = "MI", "27" = "MN", "28" = "MS", "29" = "MO", "30" = "MT", "31" = "NE", "32" = "NV", "33" = "NH", "34" = "NJ",
+      "35" = "NM", "36" = "NY", "37" = "NC", "38" = "ND", "39" = "OH", "40" = "OK", "41" = "OR", "42" = "PA", "44" = "RI", "45" = "SC",
+      "46" = "SD", "47" = "TN", "48" = "TX", "49" = "UT", "50" = "VT", "51" = "VA", "53" = "WA", "54" = "WV", "55" = "WI", "56" = "WY"
+    )
+    map_data_with_abbr <- values$map_data %>%
+      mutate(state_abbr = fips_to_abbr[as.character(STATEFP)])
+    
+    # Join centroids (robust join)
+    centroids <- values$city_boundaries %>%
+      as.data.frame() %>%
+      select(city_name = NAME, STATEFP, lon, lat)
+    map_data_with_abbr <- map_data_with_abbr %>%
+      left_join(centroids, by = c("city_name", "STATEFP"))
+    
+    # Render city as clickable link, only if coordinates are present
+    map_data_with_abbr <- map_data_with_abbr %>%
+      mutate(City = ifelse(!is.na(lon) & !is.na(lat),
+        sprintf('<a href="#" class="city-link" data-lon="%s" data-lat="%s">%s</a>', lon, lat, city_name),
+        city_name))
+    
+    top_areas <- map_data_with_abbr %>%
       arrange(desc(total_count)) %>%
-      head(10) %>%
       select(
-        City = city_name,
-        State = STATEFP,
+        City,
+        State = state_abbr,
         `ZIP Count` = zip_count,
         `Total Count` = total_count
       )
     
     datatable(
       top_areas,
+      escape = FALSE,
       options = list(
         pageLength = 10,
         searching = TRUE,
         ordering = TRUE
-      )
+      ),
+      selection = "none"
     )
+  })
+  
+  # JS click handler for city links
+  observe({
+    session$sendCustomMessage("bindCityLinks", list())
+  })
+
+  # Receive city click from JS and pan map
+  observeEvent(input$city_click, {
+    coords <- input$city_click
+    if (!is.null(coords$lon) && !is.null(coords$lat) && !is.na(as.numeric(coords$lon)) && !is.na(as.numeric(coords$lat))) {
+      leafletProxy("map") %>% setView(lng = as.numeric(coords$lon), lat = as.numeric(coords$lat), zoom = 10)
+    } else {
+      showNotification("Could not find location for this city.", type = "error")
+    }
   })
   
   # Download handlers

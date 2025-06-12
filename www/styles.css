@@ -1,117 +1,140 @@
-/* Main layout */
+/* DocGo-inspired styling */
+:root {
+  --docgo-blue: #0066CC;
+  --docgo-light-blue: #E6F0FF;
+  --docgo-dark-blue: #004C99;
+  --docgo-gray: #666666;
+  --docgo-light-gray: #F5F5F5;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--docgo-gray);
+  background-color: white;
   margin: 0;
   padding: 0;
-  background-color: #f8f9fa;
 }
 
-/* Header styling */
-.header-panel {
-  background-color: #2C3E50;
-  color: white;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* File upload button */
-.btn-file {
-  background-color: #3498db;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-file:hover {
-  background-color: #2980b9;
-}
-
-/* Panel styling */
-.panel {
+.header {
   background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1rem 2rem;
+}
+
+.header-title {
+  color: var(--docgo-blue);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+  border: 1px solid #E5E5E5;
 }
 
 .panel-heading {
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-  padding: 0.75rem 1rem;
+  background-color: var(--docgo-light-blue);
+  padding: 1rem;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+.panel-heading h4 {
+  color: var(--docgo-blue);
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .panel-body {
-  padding: 1rem;
+  padding: 1.5rem;
 }
 
-/* Map container */
-#map {
+.btn-primary {
+  background-color: var(--docgo-blue);
+  border-color: var(--docgo-blue);
+  color: white;
+  padding: 0.5rem 1rem;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--docgo-dark-blue);
+  border-color: var(--docgo-dark-blue);
+}
+
+.file-input-wrapper {
+  background-color: var(--docgo-light-blue);
+  border: 2px dashed var(--docgo-blue);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.file-input-wrapper:hover {
+  background-color: #D9E6FF;
+}
+
+/* Map styling */
+.leaflet-container {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Table styling */
 .dataTables_wrapper {
-  padding: 0.5rem;
+  font-size: 0.9rem;
 }
 
-.dataTables_filter input {
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-}
-
-/* Download buttons */
-.btn-download {
-  background-color: #27ae60;
-  color: white;
-  border: none;
+.dataTables_wrapper .dataTables_paginate .paginate_button {
   padding: 0.5rem 1rem;
+  margin: 0 0.2rem;
   border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.5rem;
-  transition: background-color 0.3s;
 }
 
-.btn-download:hover {
-  background-color: #219a52;
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background: var(--docgo-blue) !important;
+  color: white !important;
+  border: none !important;
 }
 
-/* Notifications */
-.shiny-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 1rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 1000;
+/* Ensure DataTables pagination is always below the table */
+.dataTables_wrapper .dataTables_paginate {
+  float: none !important;
+  text-align: center !important;
+  margin-top: 2.5rem !important;
+  margin-bottom: 0.5rem;
+  display: block !important;
 }
 
-.shiny-notification-message {
-  background-color: #2ecc71;
-  color: white;
+/* Summary statistics styling */
+#summary_stats {
+  font-family: 'Inter', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--docgo-gray);
 }
 
-.shiny-notification-error {
-  background-color: #e74c3c;
-  color: white;
-}
-
-/* Responsive design */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .col-sm-9 {
-    width: 100%;
+  .header {
+    padding: 1rem;
   }
   
-  .col-sm-3 {
-    width: 100%;
+  .panel-body {
+    padding: 1rem;
   }
-  
-  #map {
-    height: 50vh !important;
-  }
+}
+
+.city-link {
+  color: var(--docgo-blue);
+  text-decoration: underline;
+  cursor: pointer;
 } 
