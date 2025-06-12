@@ -1,0 +1,32 @@
+Package: zip_density_app
+Title: Interactive US ZIP Code Density Map
+Version: 0.1.0
+Authors@R: 
+    person("Your", "Name", , "your.email@example.com", role = c("aut", "cre"))
+Description: An interactive web application that visualizes ZIP code density across the continental United States.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Imports:
+    shiny,
+    shinydashboard,
+    bslib,
+    DT,
+    leaflet,
+    sf,
+    tigris,
+    maps,
+    dplyr,
+    readr,
+    tidyr,
+    stringr,
+    plotly,
+    ggplot2,
+    RColorBrewer,
+    viridis,
+    zipcodeR,
+    tidycensus
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3 
