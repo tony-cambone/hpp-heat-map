@@ -105,3 +105,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For support, please open an issue in the GitHub repository. 
+
+## Screenshot
+![image](https://github.com/user-attachments/assets/7fcc2526-0c52-4977-8fc9-faecf798c9c9)
