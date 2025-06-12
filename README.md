@@ -1,4 +1,4 @@
-# US ZIP Code Density Map
+# HPP Heat Map
 
 An interactive web application that visualizes ZIP code density across the continental United States at the city/municipal level.
 
